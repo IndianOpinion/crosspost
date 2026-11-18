@@ -60,10 +60,13 @@ final class Graphemes
         // virama (optionally with a joiner) to the consonant after it.
         $out = [];
         foreach ($m[0] as $cluster) {
-            $last = count($out) - 1;
-            if ($last >= 0 && preg_match('/[' . self::LINKERS . ']\x{200D}?$/u', $out[$last]) === 1 && preg_match('/^\p{Lo}/u', $cluster) === 1) {
-                $out[$last] .= $cluster;
+            $previous = array_pop($out);
+            if ($previous !== null && preg_match('/[' . self::LINKERS . ']\x{200D}?$/u', $previous) === 1 && preg_match('/^\p{Lo}/u', $cluster) === 1) {
+                $out[] = $previous . $cluster;
                 continue;
+            }
+            if ($previous !== null) {
+                $out[] = $previous;
             }
             $out[] = $cluster;
         }

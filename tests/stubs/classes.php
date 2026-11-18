@@ -149,8 +149,11 @@ class wpdb
             $args = $args[0];
         }
         $i = 0;
-        return (string) preg_replace_callback('/%[sdf]/', function (array $m) use (&$i, $args): string {
+        return (string) preg_replace_callback('/%[sdfi]/', function (array $m) use (&$i, $args): string {
             $value = $args[$i++] ?? '';
+            if ($m[0] === '%i') {
+                return '`' . str_replace('`', '``', (string) $value) . '`';
+            }
             if ($m[0] === '%d') {
                 return (string) (int) $value;
             }

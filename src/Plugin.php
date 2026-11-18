@@ -129,7 +129,9 @@ final class Plugin
         wp_add_privacy_policy_content(
             'Crosspost',
             wp_kses_post(
-                '<p>' . __('When a post is published, this site may announce it on social networks that the site owner has connected (X, Threads, Bluesky, Mastodon). The announcement contains the post title, excerpt, link, image and image description, which are already public. Nothing about readers is sent. The site stores the connected account id and display name, and the user id of the administrator who confirmed each network\'s preview.', 'crosspost') . '</p>'
+                '<p>' . __('When a post is published, this site may announce it on social networks that the site owner has connected (X, Threads, Bluesky, Mastodon).', 'crosspost')
+                . ' ' . __('The announcement contains the post title, excerpt, link, image and image description, which are already public. Nothing about readers is sent.', 'crosspost')
+                . ' ' . __('The site stores the connected account id and display name, and the user id of the administrator who confirmed each network\'s preview.', 'crosspost') . '</p>'
             )
         );
     }

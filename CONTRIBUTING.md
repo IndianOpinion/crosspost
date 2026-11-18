@@ -16,7 +16,7 @@ PHP 8.1 or later, with `mbstring`. `intl` and `gd` are used by the tests when pr
 
 ```sh
 composer test      # PHPUnit; no WordPress install, no network
-composer analyse   # PHPStan level 6 with WordPress stubs
+composer analyse   # PHPStan level 8 with WordPress stubs
 composer lint      # PHPCS, PSR-12
 composer check     # all three
 ```
