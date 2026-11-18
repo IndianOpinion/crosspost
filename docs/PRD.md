@@ -242,7 +242,13 @@ Reconciliation of `uncertain` jobs, per adapter:
 31. **Mastodon**: every create call carries an `Idempotency-Key` header
     derived from the job id. An `uncertain` job is resent with the same key;
     the server returns the original status instead of creating a second one.
-    The key is stable for the life of the job.
+    The key is stable for the life of the job. The server remembers keys
+    for about an hour only, so the same-key resend is used within 55
+    minutes of the first uncertain attempt. After that the job is
+    reconciled as in 33: one listing of the account's 40 most recent
+    statuses, matched by normalised text (links compared by their target),
+    never a resend. This needs the `read:statuses` scope. (Builder's
+    decision, accepted at review on 18 November 2026.)
 32. **Bluesky**: the record key is chosen by the plugin at job creation (a
     timestamp identifier in the format the protocol defines) and sent on the
     create call. An `uncertain` job first reads that record key back; if it
@@ -730,7 +736,13 @@ credential constants listed in the readme, for example
   it, so they do not end up in proxy or server logs as query strings.
   Where an API only accepts a token as a parameter, it goes in the POST
   body, never in a GET query string, unless the API offers no other way;
-  those cases are listed in ARCHITECTURE.md.
+  those cases are listed in ARCHITECTURE.md. Two such cases exist, both on
+  Threads, whose documented endpoints take the token only as a GET query
+  parameter: the long-lived token refresh, and the exchange of the
+  short-lived token for a long-lived one (which also carries the app
+  secret). Both go over HTTPS to the network's own API host, and the
+  plugin never writes a request URL to its log. (Builder's decision,
+  accepted at review on 18 November 2026.)
 - Write calls do not follow redirects.
 - Image fetches by URL are only for the site's own attachments. The plugin
   never fetches arbitrary URLs. The Threads public URL check (68) rejects

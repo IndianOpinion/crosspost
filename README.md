@@ -37,7 +37,7 @@ As a must-use plugin: copy the directory to `wp-content/mu-plugins/crosspost` an
 2. Press "Connect" (X, Threads, Mastodon) or save an app password (Bluesky), then "Verify credentials".
 3. Read the preview of your three latest posts and press "Confirm this preview".
 4. Press "Switch on".
-5. Publish a post. The first announcement on a new network waits in "first post review" at the top of the General tab. Read it, press "Send". Later posts flow on their own.
+5. Publish a post. The first announcement on a new network waits in "first post review" at the top of the General tab. Read it, press "Send". Later posts, and any that waited behind it, flow on their own. An author's "Post now" waits for this review as well; an administrator's does not.
 
 Check it works:
 

@@ -83,6 +83,17 @@ crosspost_run (WP-Cron) or `wp crosspost run`
 - **Logging.** Every message passes the scrubber with every stored secret known to it. Errors are also written to the PHP error log, scrubbed, when `WP_DEBUG_LOG` is on.
 - **No runtime dependencies.** No model call in this plugin, so the `llm-json-php` exception does not apply.
 
+### Review changes (18 November 2026)
+
+- **First post review stands in only for an administrator.** A "post now" by a user without `manage_options` (an author with `publish_posts`), or by code running without a user (cron, `crosspost_queue()` with no user), creates a job that still waits in `first post review`. Only an administrator's "post now", or an explicit release (`send` from the queue screen, or `wp crosspost send`, which asks for confirmation), skips it.
+- **Jobs held behind the first post flow once it is live.** When the reviewed first post on a network reaches `posted`, jobs held with `first post review` are woken at once instead of waiting for their stale deadline. Caps and spacing still apply.
+- **Reconciliation respects cooldown and attention.** A network cooling down after a 429, or marked `needs attention`, gets no listing call and no same-key resend; its uncertain jobs are looked at again after the cooldown. The never-landed window still runs.
+- **Kill switch during a Threads container wait.** A poll blocked by the kill switch ends the attempt as "blocked", so the job is left exactly as it was (no attempt counted, no retry scheduled).
+- **Public address check.** IPv6 addresses that carry an IPv4 address (mapped, compatible, NAT64, 6to4) are judged by that IPv4 address, and the documentation, benchmarking, multicast and other special-purpose ranges are refused, whatever the PHP version's filter flags cover.
+- **Bluesky service URL must be HTTPS** at the point of use too, so a constant cannot send the app password in clear text.
+- **SQL.** Every table and column name goes through `wpdb::prepare()`'s `%i` placeholder (WordPress 6.2 and later), so every query string is a literal. PHPStan runs at level 8.
+- **Accepted as built.** Mastodon text-match reconciliation after the idempotency window, and the two Threads endpoints that take tokens in a query string, are recorded in the PRD (cases 31 and section 8).
+
 ### Tokens outside the Authorization header
 
 Every API call sends tokens in an `Authorization` header except these documented endpoints that only accept query parameters:

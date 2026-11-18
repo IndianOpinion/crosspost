@@ -18,5 +18,11 @@ All notable changes to this project are documented here. The format follows [Kee
 - Schema check that adds columns `dbDelta` skipped and refuses to send while any is missing.
 - Uninstall that removes local data only.
 
+### Security
+
+- Only an administrator's "post now" skips the first post review; an author's, or one made by code without a user, waits for it.
+- The public address check for Threads image URLs refuses IPv6 addresses that carry a private IPv4 address, and special-purpose ranges.
+- The Bluesky service URL must use HTTPS wherever it comes from.
+
 [Unreleased]: https://github.com/IndianOpinion/crosspost/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/IndianOpinion/crosspost/releases/tag/v0.1.0
