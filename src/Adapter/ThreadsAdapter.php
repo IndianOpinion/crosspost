@@ -126,6 +126,9 @@ final class ThreadsAdapter extends AbstractAdapter
                 $imageNote = 'image container failed: ' . $result->message;
             } else {
                 $state = $this->waitFor($result, $headers, $credentials, $deadline);
+                if ($state === 'BLOCKED') {
+                    return Outcome::blocked();
+                }
                 if ($state === 'FINISHED') {
                     $container = $result;
                 } else {
@@ -143,6 +146,10 @@ final class ThreadsAdapter extends AbstractAdapter
                 return $result;
             }
             $state = $this->waitFor($result, $headers, $credentials, $deadline);
+            if ($state === 'BLOCKED') {
+                // The kill switch went on mid-attempt: leave the job as it was.
+                return Outcome::blocked();
+            }
             if ($state !== 'FINISHED') {
                 return Outcome::retryable('text container ' . strtolower($state));
             }

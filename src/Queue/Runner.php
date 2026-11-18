@@ -10,6 +10,7 @@ use IndianOpinion\Crosspost\Exception\CrosspostException;
 use IndianOpinion\Crosspost\Network;
 use IndianOpinion\Crosspost\Notifier;
 use IndianOpinion\Crosspost\Settings;
+use IndianOpinion\Crosspost\Store\AccountRecord;
 use IndianOpinion\Crosspost\Store\Job;
 use IndianOpinion\Crosspost\Support\Deadline;
 use IndianOpinion\Crosspost\Value\Credentials;
@@ -166,6 +167,17 @@ final class Runner
             if ($open === []) {
                 continue;
             }
+            // A network that needs attention or is cooling down after a 429
+            // gets no call of any kind, listings and same-key resends included.
+            $account = $app->accountRecord($network);
+            if ($account !== null && ($account->status === AccountRecord::ATTENTION || $account->cooldownUntil > $now)) {
+                foreach ($open as $job) {
+                    $job->nextAttemptAt = max($now + self::UNCERTAIN_RECHECK, $account->cooldownUntil);
+                    $job->updatedAt = $now;
+                    $app->store->updateJob($job, [Job::UNCERTAIN]);
+                }
+                continue;
+            }
             $adapter = $app->adapter($network);
             $creds = $this->credentials($adapter, $settings, false);
             if ($creds === null) {
@@ -175,7 +187,15 @@ final class Runner
             foreach ($open as $job) {
                 $drafts[] = $this->draft($job, $settings, null);
             }
-            $outcomes = $adapter->reconcile($drafts, $creds);
+            try {
+                $outcomes = $adapter->reconcile($drafts, $creds);
+            } catch (CrosspostException $e) {
+                $message = $app->logger->scrub($e->getMessage());
+                $outcomes = [];
+                foreach ($open as $id => $job) {
+                    $outcomes[$id] = Outcome::uncertain($message);
+                }
+            }
             foreach ($open as $id => $job) {
                 $outcome = $outcomes[$id] ?? Outcome::uncertain('no answer');
                 if ($outcome->is(Outcome::POSTED)) {
@@ -554,8 +574,13 @@ final class Runner
         $accountId = $creds->get('verified_account');
         if ($accountId !== '') {
             $account = $app->store->account($job->network, $accountId) ?? Notifier::fresh($job->network, $accountId, $now);
+            $firstReviewed = $app->needsFirstPostReview($job->network, $app->settings());
             $account->lastPostedAt = $now;
             $app->store->saveAccount($account);
+            if ($firstReviewed) {
+                // The reviewed first post is live: jobs that waited behind it may go.
+                $app->wake($job->network, [Job::R_FIRST_POST]);
+            }
         }
         $app->logger->event($job->id, $job->postId, $job->network, $event, 'posted ' . $job->remoteId, $outcome->httpStatus);
         $this->report->posted++;

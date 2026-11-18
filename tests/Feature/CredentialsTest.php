@@ -121,6 +121,22 @@ final class CredentialsTest extends TestCase
         $this->app->credentials->replace('mastodon', ['instance' => 'http://social.example', 'access_token' => 'MASTO6secret2token3value']);
     }
 
+    public function testBlueskyAppPasswordNeverGoesToAPlainHttpService(): void
+    {
+        $creds = new \IndianOpinion\Crosspost\Value\Credentials(Network::BLUESKY, [
+            'service' => 'http://pds.example',
+            'identifier' => 'news.example',
+            'app_password' => 'abcd-efgh-ijkl-mnop',
+        ]);
+        try {
+            $this->app->adapter(Network::BLUESKY)->refresh($creds);
+            self::fail('A plain HTTP service was accepted.');
+        } catch (CredentialsException $e) {
+            self::assertStringContainsString('HTTPS', $e->getMessage());
+        }
+        self::assertSame([], State::$requests);
+    }
+
     public function testVerifyShowsOnlyAccountIdAndName(): void
     {
         $this->app->credentials->replace('mastodon', ['instance' => 'https://social.example', 'access_token' => 'MASTO6secret2token3value']);

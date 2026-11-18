@@ -235,6 +235,12 @@ function current_user_can(string $cap, mixed ...$args): bool
     return State::$caps[$cap] ?? false;
 }
 
+function user_can(mixed $user, string $cap, mixed ...$args): bool
+{
+    $id = is_object($user) && isset($user->ID) ? (int) $user->ID : (int) $user;
+    return $id > 0 && $id === State::$userId && (State::$caps[$cap] ?? false);
+}
+
 function get_post_thumbnail_id(mixed $post): int
 {
     $post = get_post($post);

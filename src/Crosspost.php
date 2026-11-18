@@ -184,7 +184,7 @@ final class Crosspost
         $job->createdAt = $now;
         $job->updatedAt = $now;
         $job->nextAttemptAt = $now + ($mode === self::MODE_PUBLISH ? max(0, $settings->int('first_delay')) : 0);
-        $job->releasedBy = $mode === self::MODE_MANUAL ? $userId : 0;
+        $job->releasedBy = $mode === self::MODE_MANUAL ? self::reviewer($userId) : 0;
         $creds = $this->credentials->get($network);
         $job->accountId = $creds->get('verified_account');
 
@@ -281,6 +281,16 @@ final class Crosspost
             return sanitize_text_field($veto);
         }
         return '';
+    }
+
+    /**
+     * The user id that may stand in for the first post review, or 0. Only
+     * an administrator can: an author's "post now", a cron job or a CLI
+     * call without a user still waits for the review.
+     */
+    public static function reviewer(int $userId): int
+    {
+        return $userId > 0 && user_can($userId, 'manage_options') ? $userId : 0;
     }
 
     public static function optedOut(int $postId): bool
@@ -588,7 +598,7 @@ final class Crosspost
         $job->remoteUrl = '';
         $job->sentAt = 0;
         $job->firstSentAt = 0;
-        $job->releasedBy = max(1, $userId);
+        $job->releasedBy = self::reviewer($userId);
         $job->createdAt = $now;
         $job->updatedAt = $now;
         $job->nextAttemptAt = $now;

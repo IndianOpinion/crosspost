@@ -369,4 +369,73 @@ final class RunnerTest extends TestCase
         self::assertSame($this->clock->now(), $review['time']);
         self::assertSame(Settings::load()->outputHash(Network::BLUESKY), $review['hash']);
     }
+    public function testOnlyAnAdministratorsPostNowStandsInForTheFirstPostReview(): void
+    {
+        $this->connect(Network::MASTODON, false);
+        $author = $this->post(['post_status' => 'publish']);
+        State::$caps = ['publish_posts' => true, 'edit_post' => true];
+        $job = $this->app->postNow($author->ID, Network::MASTODON, 1);
+        self::assertSame(Job::HELD, $job->state);
+        self::assertSame(Job::R_FIRST_POST, $job->reason, "An author's post now waits for the review.");
+
+        // A cancelled job rebuilt by code running without a user (cron, CLI) waits too.
+        $this->app->cancel($job->id, 1);
+        $rebuilt = $this->app->postNow($author->ID, Network::MASTODON, 0);
+        self::assertSame(Job::R_FIRST_POST, $rebuilt->reason);
+
+        State::$caps = ['manage_options' => true, 'publish_posts' => true, 'edit_post' => true];
+        $admin = $this->post(['post_status' => 'publish']);
+        self::assertSame(Job::PENDING, $this->app->postNow($admin->ID, Network::MASTODON, 1)->state);
+    }
+
+    public function testJobsHeldBehindTheFirstPostFlowOnceItIsLive(): void
+    {
+        $this->connect(Network::MASTODON, false);
+        $this->settings(['networks' => ['mastodon' => ['spacing' => 0]]]);
+        $first = $this->queued();
+        $second = $this->queued();
+        self::assertSame(Job::R_FIRST_POST, $this->store->job($second->id)?->reason);
+        $this->app->send($first->id, 1);
+        $this->mastodonPosts('1');
+        $this->app->run();
+        self::assertSame(Job::POSTED, $this->store->job($first->id)?->state);
+        self::assertSame($this->clock->now(), $this->store->job($second->id)?->nextAttemptAt, 'Woken without a manual step.');
+    }
+
+    public function testReconciliationMakesNoCallDuringACooldown(): void
+    {
+        $this->connect(Network::MASTODON);
+        $this->settings(['networks' => ['mastodon' => ['spacing' => 0]]]);
+        $job = $this->queued();
+        $this->http->on('POST', '#statuses$#', FakeHttp::error('cURL error 28: Operation timed out after 15000 milliseconds with 0 bytes received'));
+        $this->app->run();
+        self::assertSame(Job::UNCERTAIN, $this->store->job($job->id)?->state);
+
+        $account = $this->app->accountRecord(Network::MASTODON);
+        self::assertNotNull($account);
+        $account->cooldownUntil = $this->clock->now() + 3600;
+        $this->store->saveAccount($account);
+        $this->clock->advance(400);
+        $before = count(State::$requests);
+        $this->app->run();
+        self::assertCount($before, State::$requests, 'No same-key resend while the network cools down.');
+        self::assertSame(Job::UNCERTAIN, $this->store->job($job->id)?->state);
+        self::assertSame($account->cooldownUntil, $this->store->job($job->id)?->nextAttemptAt);
+    }
+
+    public function testKillSwitchDuringAThreadsContainerWaitLeavesTheJob(): void
+    {
+        $this->connect(Network::THREADS);
+        $job = $this->queued(Network::THREADS);
+        $this->http->on('POST', '#/1789/threads$#', function (): array {
+            $this->settings(['kill_switch' => true]);
+            return FakeHttp::json(200, ['id' => 'C1']);
+        });
+        $report = $this->app->run();
+        self::assertSame(Job::R_KILL_SWITCH, $report->stopReason);
+        $after = $this->store->job($job->id);
+        self::assertSame(Job::PENDING, $after?->state);
+        self::assertSame(0, $after?->attempts);
+        self::assertSame([], FakeHttp::requests('#threads_publish#'));
+    }
 }

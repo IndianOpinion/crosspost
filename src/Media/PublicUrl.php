@@ -10,6 +10,19 @@ namespace IndianOpinion\Crosspost\Media;
  */
 final class PublicUrl
 {
+    /**
+     * Special-purpose ranges a network cannot reach, beyond PHP's private
+     * and reserved flags.
+     *
+     * @var list<string>
+     */
+    private const BLOCKED = [
+        '0.0.0.0/8', '10.0.0.0/8', '100.64.0.0/10', '127.0.0.0/8', '169.254.0.0/16', '172.16.0.0/12',
+        '192.0.0.0/24', '192.0.2.0/24', '192.88.99.0/24', '192.168.0.0/16', '198.18.0.0/15',
+        '198.51.100.0/24', '203.0.113.0/24', '224.0.0.0/4', '240.0.0.0/4',
+        '::/128', '::1/128', '100::/64', '2001::/23', '2001:db8::/32', 'fc00::/7', 'fe80::/10', 'fec0::/10', 'ff00::/8',
+    ];
+
     /** @var \Closure(string): list<string> */
     private \Closure $resolve;
 
@@ -71,17 +84,49 @@ final class PublicUrl
         if (filter_var($ip, FILTER_VALIDATE_IP) === false) {
             return false;
         }
+        // An IPv6 address that carries an IPv4 one (mapped, compatible,
+        // NAT64, 6to4) is judged by the IPv4 address inside it.
+        $embedded = self::embeddedIpv4($ip);
+        if ($embedded !== null) {
+            return self::isPublic($embedded);
+        }
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
             return false;
         }
         // Ranges PHP's flags do not cover on every version.
-        $blocked = ['100.64.0.0/10', '169.254.0.0/16', '127.0.0.0/8', '0.0.0.0/8', 'fe80::/10', 'fc00::/7', '::1/128', '::/128'];
-        foreach ($blocked as $cidr) {
+        foreach (self::BLOCKED as $cidr) {
             if (self::inCidr($ip, $cidr)) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * The IPv4 address inside an IPv6 one, or null.
+     */
+    private static function embeddedIpv4(string $ip): ?string
+    {
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) === false) {
+            return null;
+        }
+        $bin = inet_pton($ip);
+        if ($bin === false || strlen($bin) !== 16) {
+            return null;
+        }
+        $v4 = null;
+        if (self::inCidr($ip, '::ffff:0:0/96') || self::inCidr($ip, '64:ff9b::/96') || self::inCidr($ip, '64:ff9b:1::/48')) {
+            $v4 = substr($bin, 12, 4);
+        } elseif (self::inCidr($ip, '::/96') && substr($bin, 12, 4) !== "\0\0\0\0" && substr($bin, 12, 4) !== "\0\0\0\1") {
+            $v4 = substr($bin, 12, 4);
+        } elseif (self::inCidr($ip, '2002::/16')) {
+            $v4 = substr($bin, 2, 4);
+        }
+        if ($v4 === null) {
+            return null;
+        }
+        $text = inet_ntop($v4);
+        return $text === false ? null : $text;
     }
 
     private static function inCidr(string $ip, string $cidr): bool

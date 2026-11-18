@@ -354,7 +354,15 @@ final class BlueskyAdapter extends AbstractAdapter
     private function service(Credentials $credentials): string
     {
         $service = rtrim($credentials->get('service'), '/');
-        return $service === '' ? self::DEFAULT_SERVICE : $service;
+        if ($service === '') {
+            return self::DEFAULT_SERVICE;
+        }
+        // The app password and session tokens never travel in clear text,
+        // whether the URL came from the settings screen or a constant.
+        if (strtolower((string) parse_url($service, PHP_URL_SCHEME)) !== 'https') {
+            throw new CredentialsException('The Bluesky service URL must use HTTPS.');
+        }
+        return $service;
     }
 
     private function postUrl(string $did, string $rkey): string
