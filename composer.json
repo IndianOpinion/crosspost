@@ -1,0 +1,48 @@
+{
+    "name": "indianopinion/crosspost",
+    "description": "WordPress plugin that announces each newly published post on X, Threads, Bluesky and Mastodon through their official APIs, with per-network templates, caps, a retry queue and a log.",
+    "type": "wordpress-plugin",
+    "license": "MIT",
+    "keywords": ["wordpress", "plugin", "mastodon", "bluesky", "threads", "social", "crosspost"],
+    "homepage": "https://github.com/IndianOpinion/crosspost",
+    "support": {
+        "issues": "https://github.com/IndianOpinion/crosspost/issues",
+        "email": "hello@indianopinion.org"
+    },
+    "require": {
+        "php": ">=8.1"
+    },
+    "require-dev": {
+        "php-stubs/wordpress-stubs": "^6.4",
+        "php-stubs/wp-cli-stubs": "^2.10",
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^10.5",
+        "squizlabs/php_codesniffer": "^3.10"
+    },
+    "autoload": {
+        "psr-4": {
+            "IndianOpinion\\Crosspost\\": "src/"
+        },
+        "files": [
+            "src/functions.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "IndianOpinion\\Crosspost\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "lint": "phpcs",
+        "check": ["@lint", "@analyse", "@test"]
+    },
+    "config": {
+        "sort-packages": true,
+        "platform": {
+            "php": "8.1.0"
+        }
+    },
+    "minimum-stability": "stable"
+}
