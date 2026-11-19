@@ -140,6 +140,10 @@ See `examples/filters.php`.
 
 Deleting the plugin from the Plugins screen drops its three tables and deletes its options, transients, post meta and scheduled events. It makes no network call and does not revoke tokens remotely: revoke the app's access in each network's own settings. Deactivating only clears scheduled events.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Licence
 
 MIT. Copyright (c) 2026 Indian Opinion. See [LICENSE](LICENSE).
